@@ -1,1 +1,0 @@
-cmd_/home/kern/project_os/2020260_Assignment04/new_device/Module.symvers := sed 's/\.ko$$/\.o/' /home/kern/project_os/2020260_Assignment04/new_device/modules.order | scripts/mod/modpost  -a  -o /home/kern/project_os/2020260_Assignment04/new_device/Module.symvers -e -i Module.symvers  -N -T -
