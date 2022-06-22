@@ -1,0 +1,43 @@
+diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+index f6b5779..86d340c 100644
+--- a/arch/x86/entry/syscalls/syscall_64.tbl
++++ b/arch/x86/entry/syscalls/syscall_64.tbl
+@@ -369,6 +369,7 @@
+ 445	common	landlock_add_rule	sys_landlock_add_rule
+ 446	common	landlock_restrict_self	sys_landlock_restrict_self
+ 447	common	memfd_secret		sys_memfd_secret
++448	common	kernel_2d_memcpy	sys_kernel_2d_memcpy
+ 
+ #
+ # Due to a historical design error, certain syscalls are numbered differently
+diff --git a/kernel/sys.c b/kernel/sys.c
+index ef1a78f..900872d 100644
+--- a/kernel/sys.c
++++ b/kernel/sys.c
+@@ -199,6 +199,26 @@ static int set_one_prio(struct task_struct *p, int niceval, int error)
+ out:
+ 	return error;
+ }
++SYSCALL_DEFINE3(kernel_2d_memcpy,
++            	 void __user *, src_array,
++                void __user *, dst_array, 
++                unsigned long, len)
++{
++    int MAX_LENGTH = 128;
++    void *buf_array;
++    int flg = 0;
++    /* Copying src_array which is in user's addr space, to buffer_array. */
++    printk(KERN_INFO "Copying of array started");
++    if(copy_from_user(buf_array, src_array, len)){
++        flg = 1;
++    }
++    if(copy_to_user(dst_array, buf_array, len) || flg == 1){
++        return -EFAULT;
++    }
++    printk(KERN_INFO "kernel_2d_memcpy syscall called.");
++    /* returns bytes of data, copied. */ 
++    return len;
++}
+ 
+ SYSCALL_DEFINE3(setpriority, int, which, int, who, int, niceval)
+ {

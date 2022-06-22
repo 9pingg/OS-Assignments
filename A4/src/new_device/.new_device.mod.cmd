@@ -1,0 +1,1 @@
+cmd_/home/kern/project_os/2020260_Assignment04/new_device/new_device.mod := { echo  /home/kern/project_os/2020260_Assignment04/new_device/new_device.o;  echo; } > /home/kern/project_os/2020260_Assignment04/new_device/new_device.mod

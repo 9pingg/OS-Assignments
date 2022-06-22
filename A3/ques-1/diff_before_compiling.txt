@@ -1,0 +1,99 @@
+diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+index f6b5779..5ccba38 100644
+--- a/arch/x86/entry/syscalls/syscall_64.tbl
++++ b/arch/x86/entry/syscalls/syscall_64.tbl
+@@ -369,7 +369,7 @@
+ 445    common  landlock_add_rule       sys_landlock_add_rule
+ 446    common  landlock_restrict_self  sys_landlock_restrict_self
+ 447    common  memfd_secret            sys_memfd_secret
+-
++448    common  update_process          sys_update_process
+ #
+ # Due to a historical design error, certain syscalls are numbered differently
+ # in x32 as compared to native x86_64.  These syscalls have numbers 512-547.
+diff --git a/include/linux/sched.h b/include/linux/sched.h
+index ec8d07d..753f64d 100644
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -475,7 +475,7 @@ struct sched_entity {
+        u64                             prev_sum_exec_runtime;
+ 
+        u64                             nr_migrations;
+-
++       u64                             update_value;
+        struct sched_statistics         statistics;
+ 
+ #ifdef CONFIG_FAIR_GROUP_SCHED
+diff --git a/kernel/sched/core.c b/kernel/sched/core.c
+index f3b27c6..9c4938d 100644
+--- a/kernel/sched/core.c
++++ b/kernel/sched/core.c
+@@ -3943,6 +3943,7 @@ static void __sched_fork(unsigned long clone_flags, struct task_struct *p)
+        p->se.prev_sum_exec_runtime     = 0;
+        p->se.nr_migrations             = 0;
+        p->se.vruntime                  = 0;
++       p->se.update_value              = 0;
+        INIT_LIST_HEAD(&p->se.group_node);
+ 
+ #ifdef CONFIG_FAIR_GROUP_SCHED
+diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
+index 44c4520..7a87442 100644
+--- a/kernel/sched/fair.c
++++ b/kernel/sched/fair.c
+@@ -21,7 +21,8 @@
+  *  Copyright (C) 2007 Red Hat, Inc., Peter Zijlstra
+  */
+ #include "sched.h"
+-
++#include <linux/ktime.h>
++#include <linux/printk.h>
+ /*
+  * Targeted preemption latency for CPU-bound tasks:
+  *
+@@ -632,7 +633,6 @@ static u64 __sched_period(unsigned long nr_running)
+        else
+                return sysctl_sched_latency;
+ }
+-
+ /*
+  * We calculate the wall-time slice from the period by taking a part
+  * proportional to the weight.
+@@ -7303,7 +7303,11 @@ done: __maybe_unused;
+                hrtick_start_fair(rq, p);
+ 
+        update_misfit_status(p, rq);
+-
++       if(p->se.update_value > 0 ){
++               p->se.vruntime = p->se.vruntime + p->se.update_value;
++       }
++       u64 timeslice_p = ktime_get_ns();
++       pr_info("Pid, TimeSlice: %d %llu\n", p->pid, timeslice_p);
+        return p;
+ 
+ idle:
+diff --git a/kernel/sys.c b/kernel/sys.c
+index ef1a78f..e72e774 100644
+--- a/kernel/sys.c
++++ b/kernel/sys.c
+@@ -334,6 +334,24 @@ SYSCALL_DEFINE2(getpriority, int, which, int, who)
+ 
+        return retval;
+ }
++SYSCALL_DEFINE2(update_process, int, pid, s64, update_value){
++       struct task_struct *p = NULL, *temp_struct = NULL;
++       if(pid <= 0 || update_value <= 0){
++               return -EINVAL;
++       }
++       for_each_process(temp_struct){
++               if((long)task_pid_nr(temp_struct) == pid){
++                       p = temp_struct;
++                       break;
++               }
++       }
++       if(p == NULL){
++               return -EINVAL;
++       }
++       p->se.update_value = update_value;
++       printk("update_value changed");
++       return 0;
++}
