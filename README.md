@@ -1,3 +1,3 @@
 # OS-Assignments
 
-This repo contains all the assignments given in the course Operating System.
+This repo contains all the assignments given in the Operating System course.
